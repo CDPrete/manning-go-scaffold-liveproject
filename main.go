@@ -12,7 +12,7 @@ type Config struct {
 	ProjectName       string
 	ProjectLocation   string
 	ProjectRepository string
-	ProjectType       bool
+	WebAppProject     bool
 }
 
 func checkParameter(name string, value string) string {
@@ -45,7 +45,7 @@ func readConfig(args []string) (*Config, error) {
 	flagSet.StringVar(&config.ProjectName, "n", "", "Project name")
 	flagSet.StringVar(&config.ProjectLocation, "d", "", "Project location on disk")
 	flagSet.StringVar(&config.ProjectRepository, "r", "", "Project remote repository URL")
-	flagSet.BoolVar(&config.ProjectType, "s", false, "Project will have static assets or not")
+	flagSet.BoolVar(&config.WebAppProject, "s", false, "Project will have static assets or not")
 
 	if err := flagSet.Parse(args); err != nil && err != flag.ErrHelp {
 		return nil, err

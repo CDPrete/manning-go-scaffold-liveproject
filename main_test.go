@@ -53,7 +53,7 @@ func TestReadConfig(t *testing.T) {
 		assertEmptyString(config.ProjectName, "project name", t)
 		assertEmptyString(config.ProjectLocation, "project location", t)
 		assertEmptyString(config.ProjectRepository, "project repository", t)
-		if config.ProjectType != false { t.Fatal("project type should have been false") }
+		if config.WebAppProject != false { t.Fatal("project type should have been false") }
 	})
 }
 
