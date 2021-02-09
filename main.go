@@ -4,8 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"main/fileutils"
+	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
+	"text/template"
 )
 
 type Config struct {
@@ -23,6 +27,38 @@ func checkParameter(name string, value string) string {
 	return ""
 }
 
+func validatePath(path string) []string {
+	var errors []string
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			errors = append(errors, fmt.Sprintf("The path '%s' doesn't exist", path))
+		} else if os.IsPermission(err) {
+			errors = append(errors, fmt.Sprintf("The path '%s' doesn't exist", path))
+		} else {
+			errors = append(errors, err.Error())
+		}
+	} else if !fileInfo.IsDir() {
+		errors = append(errors, fmt.Sprintf("The path '%s' is not a directory", path))
+	} else if !fileutils.IsDirectoryWritable(path) {
+		errors = append(errors, fmt.Sprintf("The path '%s' is not writeable", path))
+	}
+
+	return errors
+}
+
+func validateRepositoryUrl(repositoryUrl string) []string {
+	var errors []string
+	parsedUrl, err := url.Parse(repositoryUrl)
+	if err != nil {
+		errors = append(errors, err.Error())
+	} else if len(parsedUrl.Scheme) > 0 {
+		errors = append(errors, fmt.Sprintf("The repository URL must not specify the scheme, but '%s' was found", parsedUrl.Scheme))
+	}
+
+	return errors
+}
+
 func (c *Config) Validate() []string {
 	var errors []string
 	var parameters = map[string]string{
@@ -35,6 +71,8 @@ func (c *Config) Validate() []string {
 			errors = append(errors, err)
 		}
 	}
+	errors = append(errors, validateRepositoryUrl(c.ProjectRepository)...)
+	errors = append(errors, validatePath(c.ProjectLocation)...)
 
 	return errors
 }
@@ -54,6 +92,22 @@ func readConfig(args []string) (*Config, error) {
 	return &config, nil
 }
 
+func resolveTemplate(templateFilename string, config *Config) {
+	parsedTemplate := template.Must(template.ParseFiles(templateFilename))
+	defer os.Remove(templateFilename)
+
+	filename := templateFilename[0: strings.Index(templateFilename, filepath.Ext(templateFilename))]
+	file, err := os.Create(filename)
+	if err != nil {
+		log.Fatalf("An error occurred while creating the file %s from the template %s:\n%v", filename, templateFilename, err)
+	}
+	defer file.Close()
+
+	if err := parsedTemplate.Execute(file, config); err != nil {
+		log.Fatalf("An error occurred while resolving the template %s:\n%v", templateFilename, err)
+	}
+}
+
 func main() {
 	config, err := readConfig(os.Args[1:])
 	if err != nil {
@@ -65,4 +119,15 @@ func main() {
 	}
 
 	log.Printf("Generating scaffold for project %s in %s", config.ProjectName, config.ProjectLocation)
+
+	var projectName string
+	if config.WebAppProject {
+		projectName = "webapp"
+	} else {
+		projectName = "api"
+	}
+	templateFiles := fileutils.CopyTree(filepath.Join(".", "templates", projectName), config.ProjectLocation)
+	for _, templateFile := range templateFiles {
+		resolveTemplate(templateFile, config)
+	}
 }

@@ -93,6 +93,7 @@ func TestConfig_Validate(t *testing.T) {
 		{ config: Config{ProjectName: "name"}, numOfErrors: 2 },
 		{ config: Config{ProjectName: "name", ProjectLocation: "path"}, numOfErrors: 1 },
 		{ config: Config{ProjectName: "name", ProjectLocation: "path", ProjectRepository: "repository"}, numOfErrors: 0 },
+		{ config: Config{ProjectName: "name", ProjectLocation: "path", ProjectRepository: "http://repository"}, numOfErrors: 0 },
 	}
 
 	for _, testCase := range testCases {
