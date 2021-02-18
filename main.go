@@ -27,6 +27,14 @@ func checkParameter(name string, value string) string {
 	return ""
 }
 
+func getProjectTypeName(isWebApp bool) string {
+	if isWebApp {
+		return "webapp"
+	}
+
+	return "api"
+}
+
 func validatePath(path string) []string {
 	var errors []string
 	fileInfo, err := os.Stat(path)
@@ -122,13 +130,7 @@ func main() {
 
 	log.Printf("Generating scaffold for project %s in %s", config.ProjectName, config.ProjectLocation)
 
-	var projectName string
-	if config.WebAppProject {
-		projectName = "webapp"
-	} else {
-		projectName = "api"
-	}
-	templateFiles := fileutils.CopyTree(filepath.Join(".", "templates", projectName), filepath.Join(config.ProjectLocation, config.ProjectName))
+	templateFiles := fileutils.CopyTree(filepath.Join(".", "templates", getProjectTypeName(config.WebAppProject)), filepath.Join(config.ProjectLocation, config.ProjectName))
 	for _, templateFile := range templateFiles {
 		resolveTemplate(templateFile, config)
 	}

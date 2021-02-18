@@ -1,11 +1,11 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -114,24 +114,76 @@ func TestConfig_Validate(t *testing.T) {
 	}
 }
 
-func TestMain(m *testing.M) {
+func TestMainRun(t *testing.T) {
 	// given
-	flag.Parse() // parse flags before m.Run otherwise it will try to parse
 	output := strings.Builder{}
 	log.SetOutput(&output)
 	const name = "test-name"
-	var path, _ = ioutil.TempDir("", "")
+	var path = t.TempDir()
 	var expectedOutput = fmt.Sprintf("Generating scaffold for project %s in %s", name, path)
-	os.Args = []string{"test", "-n", name, "-d", path, "-r", "some-repo"}
+	os.Args = []string{"test", "-n", name, "-d", path, "-r", "test-repo"}
 
 	// when
-	exitCode := m.Run()
-	defer os.Exit(exitCode)
-	defer os.RemoveAll(path)
+	main()
 
 	// then
-	if exitCode != 0 { panic("exit code should have been 0") }
-	if output.String() != expectedOutput { panic("output is not the expected one") }
+	if !strings.Contains(output.String(), expectedOutput) {
+		t.Fatalf("output is not the expected one\n found: %s, expected %s", output.String(), expectedOutput)
+	}
+}
+
+func TestMain_Generation(t *testing.T) {
+	const name = "test-name"
+	const repository = "main"
+	for _, projectType := range []bool{true, false} {
+		t.Run(fmt.Sprintf("Generating %s project", getProjectTypeName(projectType)), func(t *testing.T) {
+			// given
+			var path = t.TempDir()
+			var rootGeneratedPath = filepath.Join(path, name)
+			os.Args = []string{"test", "-n", name, "-d", path, "-r", repository}
+			if projectType {
+				os.Args = append(os.Args, "-s")
+			}
+			exampleFiles := make(map[string]*string)
+			var rootExamplesPath = filepath.Join(".", "examples", getProjectTypeName(projectType))
+			walkFunc := func(path string, info os.FileInfo, err error) error {
+				pathWithoutRoot := strings.TrimPrefix(path, rootExamplesPath)
+				if info.IsDir() {
+					exampleFiles[pathWithoutRoot] = nil
+				} else {
+					var data []byte
+					if data, err = ioutil.ReadFile(path); err == nil {
+						dataStr := string(data)
+						exampleFiles[pathWithoutRoot] = &dataStr
+					}
+				}
+				return err
+			}
+			if err := filepath.Walk(rootExamplesPath, walkFunc); err != nil {
+				t.Fatal(err)
+			}
+
+			// when
+			main()
+
+			// then
+			assertWalkFunc := func(path string, info os.FileInfo, err error) error {
+				pathWithoutRoot := strings.TrimPrefix(path, rootGeneratedPath)
+				if value, exists := exampleFiles[pathWithoutRoot]; !exists {
+					err = fmt.Errorf("%s not found in the expected file tree", path)
+				} else if value != nil {
+					var data []byte
+					if data, err = ioutil.ReadFile(path); err == nil && !strings.EqualFold(string(data), *value) {
+						err = fmt.Errorf("\ncontent expected:\n%s\ncontent found:\n%s", *value, string(data))
+					}
+				}
+				return err
+			}
+			if err := filepath.Walk(rootGeneratedPath, assertWalkFunc); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
 }
 
 // using testify would be way better
