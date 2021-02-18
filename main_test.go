@@ -1,7 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -91,9 +93,9 @@ func TestConfig_Validate(t *testing.T) {
 	}{
 		{ config: Config{}, numOfErrors: 3 },
 		{ config: Config{ProjectName: "name"}, numOfErrors: 2 },
-		{ config: Config{ProjectName: "name", ProjectLocation: "path"}, numOfErrors: 1 },
-		{ config: Config{ProjectName: "name", ProjectLocation: "path", ProjectRepository: "repository"}, numOfErrors: 0 },
-		{ config: Config{ProjectName: "name", ProjectLocation: "path", ProjectRepository: "http://repository"}, numOfErrors: 0 },
+		{ config: Config{ProjectName: "name", ProjectLocation: "."}, numOfErrors: 1 },
+		{ config: Config{ProjectName: "name", ProjectLocation: ".", ProjectRepository: "http://localhost"}, numOfErrors: 1 },
+		{ config: Config{ProjectName: "name", ProjectLocation: ".", ProjectRepository: "localhost"}, numOfErrors: 0 },
 	}
 
 	for _, testCase := range testCases {
@@ -114,15 +116,18 @@ func TestConfig_Validate(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	// given
+	flag.Parse() // parse flags before m.Run otherwise it will try to parse
 	output := strings.Builder{}
 	log.SetOutput(&output)
 	const name = "test-name"
-	const path = "./test-path"
+	var path, _ = ioutil.TempDir("", "")
 	var expectedOutput = fmt.Sprintf("Generating scaffold for project %s in %s", name, path)
 	os.Args = []string{"test", "-n", name, "-d", path, "-r", "some-repo"}
 
 	// when
 	exitCode := m.Run()
+	defer os.Exit(exitCode)
+	defer os.RemoveAll(path)
 
 	// then
 	if exitCode != 0 { panic("exit code should have been 0") }

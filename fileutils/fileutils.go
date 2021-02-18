@@ -34,7 +34,7 @@ func copyFile(sourceFile string, destinationFile string) {
 func copyTreeInternal(sourceDirectory string, destinationDirectory string, templateFiles *[]string) {
 	fileInfos, err := ioutil.ReadDir(sourceDirectory)
 	if err != nil {
-		log.Fatalf("An error occurred while copying %s into %s:\n%v", sourceDirectory, destinationDirectory, err)
+		log.Fatalf("An error occurred reading the content of %s:\n%v", sourceDirectory, err)
 	}
 
 	for _, fileInfo := range fileInfos {
@@ -55,6 +55,10 @@ func copyTreeInternal(sourceDirectory string, destinationDirectory string, templ
 }
 
 func CopyTree(sourceDirectory string, destinationDirectory string) []string {
+	if err := os.MkdirAll(destinationDirectory, os.ModeDir); err != nil {
+		log.Fatalf("An error occurred while creating the destination path %s:\n%v", destinationDirectory, err)
+	}
+
 	var templateFiles []string
 
 	copyTreeInternal(sourceDirectory, destinationDirectory, &templateFiles)

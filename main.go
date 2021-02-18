@@ -4,10 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"main/fileutils"
 	"net/url"
 	"os"
 	"path/filepath"
+	"scaffold_gen/fileutils"
 	"strings"
 	"text/template"
 )
@@ -71,8 +71,10 @@ func (c *Config) Validate() []string {
 			errors = append(errors, err)
 		}
 	}
-	errors = append(errors, validateRepositoryUrl(c.ProjectRepository)...)
-	errors = append(errors, validatePath(c.ProjectLocation)...)
+	if len(errors) == 0 {
+		errors = append(errors, validateRepositoryUrl(c.ProjectRepository)...)
+		errors = append(errors, validatePath(c.ProjectLocation)...)
+	}
 
 	return errors
 }
@@ -126,7 +128,7 @@ func main() {
 	} else {
 		projectName = "api"
 	}
-	templateFiles := fileutils.CopyTree(filepath.Join(".", "templates", projectName), config.ProjectLocation)
+	templateFiles := fileutils.CopyTree(filepath.Join(".", "templates", projectName), filepath.Join(config.ProjectLocation, config.ProjectName))
 	for _, templateFile := range templateFiles {
 		resolveTemplate(templateFile, config)
 	}
